@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime
+import urllib
 
 import requests
 import pytesseract
@@ -11,16 +12,14 @@ def main():
     # Variables Declare
     url = "https://rpachallengeocr.azurewebsites.net/"
     object = {'lista': 'valor'}
-    pytesseract.pytesseract.tesseract_cmd = r'D:\tesseract-ocr\tesseract' # CHANGE THIS TO WORK
+    pytesseract.pytesseract.tesseract_cmd = r'D:\tesseract-ocr\tesseract'  # CHANGE THIS TO WORK
     absolute_path = os.path.dirname(__file__)
     relative_path = "invoices/"
 
-    if not os.path.isfile("invoices.csv"):
-        with open('invoices.csv', 'a', newline='') as file:
-            writer = csv.writer(file)
-            field = ["ID", "DueDate", "InvoiceNo", "InvoiceDate", "CompanyName", "TotalDue"]
-            writer.writerow(field)
-
+    with open('invoices.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        field = ["ID", "DueDate", "InvoiceNo", "InvoiceDate", "CompanyName", "TotalDue"]
+        writer.writerow(field)
 
     # Get Text
     x = requests.post(f"{url}/seed", json=object)
@@ -35,7 +34,6 @@ def main():
         duedate = item["duedate"]
 
         if time_date <= today_datetime:
-            print(f"{time_date} / {today_date}")
             image_request = requests.get(f"{url}/{item['invoice']}").content
             file_name = (str(item['invoice'].split("/")[2]))
 
@@ -51,8 +49,6 @@ def main():
             company_name = ""
             invoice_date = ""
             total_due = ""
-
-            print(lista_img_string)
 
             if lista_img_string[0] != "INVOICE":
                 company_name = lista_img_string[0][0:lista_img_string[0].index("INVOICE") - 1]
@@ -87,6 +83,19 @@ def main():
             with open('invoices.csv', 'a', newline='') as file:
                 writer = csv.writer(file)
                 writer.writerow([id, duedate, invoice, invoice_date, company_name, total_due])
+
+    url = "https://rpachallengeocr.azurewebsites.net/upload"
+    file_path = "invoices.csv"
+
+    files = {'csv': ('invoices.csv', open(file_path, 'rb'), 'application/vnd.ms-excel')}
+
+    response = requests.post(url, files=files)
+    print(response.text)
+
+    if response.status_code == 200:
+        print("File sent successfully.")
+    else:
+        print("Failed to send file.")
 
 
 if __name__ == "__main__":
